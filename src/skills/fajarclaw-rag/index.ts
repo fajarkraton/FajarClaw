@@ -5,6 +5,7 @@
  * Re-exports all public APIs from the fajarclaw-rag skill.
  * Phase A3: reranker, hybrid retrieval, prompt builder, evaluator.
  * Phase A4: query transform, cache, sprint memory, guardrails.
+ * Phase A5: visual embedder, visual indexer, visual search, visual bridge, dogfood.
  */
 
 // Collection schemas
@@ -229,3 +230,84 @@ export type {
     GuardrailReport,
     GuardrailOptions,
 } from './guardrails.js';
+
+// Visual Embedder (Phase A5)
+export {
+    embedImage,
+    embedImageText,
+    embedTextForVisual,
+    isVisualServerReady,
+    getVisualHealth,
+    isSupportedImage,
+    formatVisualEmbedStatus,
+    setMockMode,
+    isMockMode,
+    setVisualServerUrl,
+    getVisualServerUrl,
+    VISUAL_EMBED_DIM,
+    SUPPORTED_EXTENSIONS,
+} from './visual-embedder.js';
+
+// Visual Indexer (Phase A5)
+export {
+    indexScreenshot,
+    indexMockup,
+    indexScreenshots,
+    formatVisualIndexSummary,
+} from './visual-indexer.js';
+
+// Visual Search (Phase A5)
+export {
+    searchVisual,
+    searchSimilarImage,
+    searchAllVisual,
+    formatVisualSearchResults,
+} from './visual-search.js';
+
+// Visual Bridge (Phase A5)
+export {
+    findCodeForScreenshot,
+    visualDiff,
+    batchVisualDiff,
+    createMapping,
+    formatCodeForScreenshot,
+    formatVisualDiffReport,
+} from './visual-bridge.js';
+
+// Dogfood Report (Phase A5)
+export {
+    runDogfood,
+    formatDogfoodReport,
+    dogfoodSummaryLine,
+} from './dogfood-report.js';
+
+// Phase A5 Types
+export type {
+    VisualEmbedding,
+    VisualEmbedOptions,
+    VisualEmbedServerHealth,
+} from './visual-embedder.js';
+
+export type {
+    VisualMetadata,
+    VisualIndexResult,
+    VisualIndexSummary,
+} from './visual-indexer.js';
+
+export type {
+    VisualSearchResult,
+    VisualSearchResponse,
+    VisualCollection,
+} from './visual-search.js';
+
+export type {
+    CodeForScreenshot,
+    VisualDiffResult,
+    VisualDiffReport,
+    ScreenshotMapping,
+} from './visual-bridge.js';
+
+export type {
+    FileReport,
+    DogfoodReport,
+} from './dogfood-report.js';
