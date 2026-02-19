@@ -155,3 +155,4 @@ export * from './types/index.js';
 export * from './skills/fajarclaw-router/index.js';
 export * from './skills/fajarclaw-claude-code/index.js';
 export * from './skills/fajarclaw-antigravity/index.js';
+export * from './skills/fajarclaw-rag/index.js';
