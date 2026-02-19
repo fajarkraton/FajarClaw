@@ -79,6 +79,30 @@ export function isMockMode(): boolean {
     return mockMode;
 }
 
+/**
+ * Auto-detect mode: probe the visual server and switch to real mode if healthy.
+ * Call this on startup to automatically use real Qwen3-VL when available.
+ * @ref FC-PRD-01 §10.13 (Visual RAG)
+ */
+export async function autoDetectMode(): Promise<boolean> {
+    try {
+        const response = await fetch(`${serverUrl}/health`, {
+            signal: AbortSignal.timeout(2000),
+        });
+        if (response.ok) {
+            const data = await response.json() as Record<string, unknown>;
+            if (data['status'] === 'healthy') {
+                mockMode = false;
+                return true; // Real mode activated
+            }
+        }
+    } catch {
+        // Server not available — stay in mock mode
+    }
+    mockMode = true;
+    return false;
+}
+
 // === Mock Embedding ===
 
 /**
