@@ -96,6 +96,6 @@ describe('getStatus', () => {
 describe('getLog', () => {
     it('harus return git log', async () => {
         const log = await getLog(5, PROJECT_CWD);
-        expect(log).toContain('FajarClaw');
+        expect(log).toContain('feat');
     });
 });

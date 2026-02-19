@@ -95,17 +95,31 @@ describe.skipIf(!milvusUp)('Milvus Client — Integration Tests', () => {
     }, 15000);
 
     it('harus bisa search vector di fc_documents', async () => {
-        await new Promise(r => setTimeout(r, 1500)); // flush delay
+        // Insert a known vector for search
+        const knownVector = Array.from({ length: DENSE_DIM }, (_, i) => Math.sin(i) * 0.1);
+        const searchId = randomUUID();
 
-        const count = await getCollectionCount('fc_documents');
-        expect(count).toBeGreaterThanOrEqual(1);
+        await insert('fc_documents', [{
+            id: searchId,
+            text: 'Test search result untuk verifikasi',
+            dense_vector: knownVector,
+            sparse_vector: { 10: 0.5 },
+            source: 'search-test.md',
+            doc_type: 'test',
+            section: 'Search',
+            chunk_index: 0,
+            created_at: Date.now(),
+        }]);
 
-        const queryVector = Array.from({ length: DENSE_DIM }, () => Math.random() - 0.5);
+        // Flush to ensure data is queryable
+        const { getClient } = await import('./milvus-client.js');
+        await getClient().flushSync({ collection_names: ['fc_documents'] });
+
         const results = await search({
             collection: 'fc_documents',
-            vector: queryVector,
+            vector: knownVector,
             topK: 3,
-            outputFields: ['text', 'source', 'doc_type'],
+            outputFields: ['text', 'source'],
         });
 
         expect(results.length).toBeGreaterThanOrEqual(1);
