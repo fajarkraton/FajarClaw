@@ -1,0 +1,18 @@
+[Unit]
+Description=FajarClaw BGE-M3 Embedding Server
+After=network.target docker.service
+
+[Service]
+Type=simple
+User=primecore
+WorkingDirectory=/home/primecore/Documents/FajarClaw
+ExecStart=/home/primecore/Documents/FajarClaw/.venv/bin/python /home/primecore/Documents/FajarClaw/python/embedding_server.py
+Restart=on-failure
+RestartSec=10
+Environment=EMBEDDING_MODEL=BAAI/bge-m3
+Environment=EMBEDDING_HOST=0.0.0.0
+Environment=EMBEDDING_PORT=8100
+Environment=EMBEDDING_USE_GPU=true
+
+[Install]
+WantedBy=multi-user.target
