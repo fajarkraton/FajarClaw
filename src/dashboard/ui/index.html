@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FajarClaw Command Center</title>
+    <meta name="description" content="FajarClaw v4.0.0 — AI-Powered Coding Dashboard with RAG, Visual AI, and Dual-Engine Architecture">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦅</text></svg>">
+</head>
+<body>
+<div class="app">
+    <!-- ── TopBar ── -->
+    <header class="topbar">
+        <div class="topbar__logo">
+            <div class="topbar__logo-icon">🦅</div>
+            FajarClaw Command Center
+            <span class="topbar__version">v4.0.0</span>
+        </div>
+        <div class="topbar__status" id="topbar-status">
+            <span class="topbar__dot"></span>
+            <span id="topbar-text">Connecting...</span>
+        </div>
+    </header>
+
+    <!-- ── Sidebar ── -->
+    <nav class="sidebar" role="navigation">
+        <a class="sidebar__item active" data-panel="dashboard" title="Dashboard">
+            📊<span class="sidebar__tooltip">Dashboard</span>
+        </a>
+        <a class="sidebar__item" data-panel="search" title="Search">
+            🔍<span class="sidebar__tooltip">RAG Search</span>
+        </a>
+        <a class="sidebar__item" data-panel="collections" title="Collections">
+            📦<span class="sidebar__tooltip">Collections</span>
+        </a>
+        <a class="sidebar__item" data-panel="routing" title="Routing">
+            🔀<span class="sidebar__tooltip">Routing</span>
+        </a>
+        <a class="sidebar__item" data-panel="memory" title="Memory">
+            🧠<span class="sidebar__tooltip">Sprint Memory</span>
+        </a>
+    </nav>
+
+    <!-- ── Main Content ── -->
+    <main class="main" role="main">
+
+        <!-- Panel: Dashboard -->
+        <section class="panel active" id="panel-dashboard">
+            <h1 class="panel__title">System Overview</h1>
+
+            <!-- Server Health -->
+            <div class="grid-4" id="server-cards">
+                <!-- Populated by JS -->
+            </div>
+
+            <!-- GPU + Stats -->
+            <div class="grid-2-1">
+                <div class="card" id="gpu-card">
+                    <div class="card__header">
+                        <span class="card__title">GPU Monitor</span>
+                        <span class="card__badge card__badge--success" id="gpu-name">Loading</span>
+                    </div>
+                    <div class="gpu-gauge">
+                        <div class="gpu-gauge__circle">
+                            <svg class="gpu-gauge__svg" viewBox="0 0 120 120">
+                                <defs>
+                                    <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" stop-color="hsl(217, 91%, 60%)"/>
+                                        <stop offset="100%" stop-color="hsl(192, 85%, 55%)"/>
+                                    </linearGradient>
+                                </defs>
+                                <circle class="gpu-gauge__track" cx="60" cy="60" r="50"/>
+                                <circle class="gpu-gauge__fill" id="gpu-arc" cx="60" cy="60" r="50"
+                                    stroke-dasharray="314" stroke-dashoffset="314"/>
+                            </svg>
+                            <div class="gpu-gauge__label">
+                                <div class="gpu-gauge__value" id="gpu-vram-used">0</div>
+                                <div class="gpu-gauge__unit">GB VRAM</div>
+                            </div>
+                        </div>
+                        <div class="gpu-gauge__details">
+                            <div class="gpu-gauge__detail">Free: <span id="gpu-free">0</span> MB</div>
+                            <div class="gpu-gauge__detail">Util: <span id="gpu-util">0</span>%</div>
+                            <div class="gpu-gauge__detail">Temp: <span id="gpu-temp">0</span>°C</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" id="cache-card">
+                    <div class="card__header">
+                        <span class="card__title">Cache Stats</span>
+                    </div>
+                    <div id="cache-stats">
+                        <div class="loading"><div class="loading__spinner"></div></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Panel: Search -->
+        <section class="panel" id="panel-search">
+            <h1 class="panel__title">RAG Search</h1>
+            <div class="search-box">
+                <input class="search-box__input" id="search-input"
+                    placeholder="Search documents, code, patterns..." autocomplete="off">
+                <select class="search-box__select" id="search-mode">
+                    <option value="hybrid">Hybrid</option>
+                    <option value="basic">Vector</option>
+                </select>
+                <button class="search-box__btn" id="search-btn">Search</button>
+            </div>
+            <div class="card" id="search-results">
+                <div class="empty-state">
+                    <div class="empty-state__icon">🔍</div>
+                    <div class="empty-state__text">Type a query and press Search</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Panel: Collections -->
+        <section class="panel" id="panel-collections">
+            <h1 class="panel__title">Milvus Collections</h1>
+            <div class="card" id="collections-list">
+                <div class="loading"><div class="loading__spinner"></div></div>
+            </div>
+        </section>
+
+        <!-- Panel: Routing -->
+        <section class="panel" id="panel-routing">
+            <h1 class="panel__title">Routing Simulator</h1>
+            <div class="search-box">
+                <input class="search-box__input" id="route-input"
+                    placeholder="Enter a task to see which engine handles it..." autocomplete="off">
+                <button class="search-box__btn" id="route-btn">Route</button>
+            </div>
+            <div id="route-result"></div>
+        </section>
+
+        <!-- Panel: Memory -->
+        <section class="panel" id="panel-memory">
+            <h1 class="panel__title">Sprint Memory</h1>
+            <div class="search-box">
+                <input class="search-box__input" id="memory-input"
+                    placeholder="Search sprint decisions, patterns..." autocomplete="off">
+                <button class="search-box__btn" id="memory-btn">Search</button>
+            </div>
+            <div id="memory-results">
+                <div class="empty-state">
+                    <div class="empty-state__icon">🧠</div>
+                    <div class="empty-state__text">Search sprint memory or view stats</div>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
