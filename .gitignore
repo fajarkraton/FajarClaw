@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Milvus data
+milvus_data/
+milvus_lite.db
+
+# Models cache
+models/
+.cache/
+
+# Logs
+*.log
+logs/
+
+# Coverage
+coverage/
+
+# Temp
+tmp/
+.tmp/

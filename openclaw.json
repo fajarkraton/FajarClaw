@@ -1,0 +1,17 @@
+{
+    "name": "FajarClaw",
+    "version": "4.0.0",
+    "description": "Automatic Digital Programmer — Dual-Engine Architecture with RAG-Enhanced Routing",
+    "gateway": {
+        "port": 18789,
+        "host": "127.0.0.1"
+    },
+    "agent": {
+        "model": "claude-opus-4-0",
+        "persona": "./AGENTS.md",
+        "codebase": "./CLAUDE.md"
+    },
+    "skills": {
+        "workspace": "./src/skills"
+    }
+}
