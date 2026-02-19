@@ -217,6 +217,44 @@ export async function search(options: SearchOptions): Promise<SearchResult[]> {
     }));
 }
 
+/** Sparse vector search options */
+export interface SparseSearchOptions {
+    collection: string;
+    /** Sparse vector as {index: weight} */
+    sparseVector: Record<number, number>;
+    topK?: number;
+    filter?: string;
+    outputFields?: string[];
+}
+
+/**
+ * Sparse vector search pada collection
+ * Uses SPARSE_INVERTED_INDEX for BM25-like retrieval
+ */
+export async function sparseSearch(options: SparseSearchOptions): Promise<SearchResult[]> {
+    const client = getClient();
+    const topK = options.topK ?? 5;
+
+    const result = await client.search({
+        collection_name: options.collection,
+        data: [options.sparseVector],
+        anns_field: 'sparse_vector',
+        limit: topK,
+        filter: options.filter ?? '',
+        output_fields: options.outputFields ?? ['text', 'source'],
+        params: { metric_type: 'IP' },
+    });
+
+    return (result.results ?? []).map((r: Record<string, unknown>) => ({
+        id: String(r['id'] ?? ''),
+        score: Number(r['score'] ?? 0),
+        text: String(r['text'] ?? ''),
+        metadata: Object.fromEntries(
+            Object.entries(r).filter(([k]) => !['id', 'score', 'text'].includes(k))
+        ),
+    }));
+}
+
 /**
  * Delete data berdasarkan filter expression
  */
