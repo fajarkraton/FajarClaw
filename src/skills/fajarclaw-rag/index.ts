@@ -3,7 +3,8 @@
  * @ref FC-PRD-01 §10 (RAG Pipeline)
  *
  * Re-exports all public APIs from the fajarclaw-rag skill.
- * Phase A3: Added reranker, hybrid retrieval, prompt builder, evaluator.
+ * Phase A3: reranker, hybrid retrieval, prompt builder, evaluator.
+ * Phase A4: query transform, cache, sprint memory, guardrails.
  */
 
 // Collection schemas
@@ -152,3 +153,79 @@ export type {
     RAGRoutedTask,
     RAGCommandResult,
 } from './rag-router.js';
+
+// Query Transform (Phase A4)
+export {
+    expandQuery,
+    hydeTransform,
+    decomposeQuery,
+    injectMetadataFilters,
+    transformQuery,
+    formatTransformResult,
+} from './query-transform.js';
+
+// Cache (Phase A4)
+export {
+    LRUCache as RAGCache,
+    hashKey,
+    makeCacheKey,
+    getCachedEmbedding,
+    setCachedEmbedding,
+    getCachedRetrieval,
+    setCachedRetrieval,
+    getCachedRerank,
+    setCachedRerank,
+    clearAllCaches,
+    clearCache,
+    getCacheStats,
+    formatCacheStats,
+} from './cache.js';
+
+// Sprint Memory (Phase A4)
+export {
+    saveDecision,
+    recallDecisions,
+    saveSprintRetro,
+    parseSprintRetro,
+    formatRecalledDecisions,
+    formatSprintRetro as formatSprintRetroDisplay,
+} from './sprint-memory.js';
+
+// Guardrails (Phase A4)
+export {
+    checkCodeStandard,
+    checkTraceability,
+    checkSecurity,
+    checkDuplication,
+    checkConsistency,
+    runAllGuardrails,
+    formatGuardrailReport,
+} from './guardrails.js';
+
+// Phase A4 Types
+export type {
+    ExpandedQuery,
+    HyDEResult,
+    DecomposedQuery,
+    MetadataFilter,
+    TransformedQuery,
+    TransformOptions,
+} from './query-transform.js';
+
+export type {
+    CacheStats,
+    AllCacheStats,
+} from './cache.js';
+
+export type {
+    Decision,
+    SaveDecisionOptions,
+    RecallResult,
+    SprintRetro,
+} from './sprint-memory.js';
+
+export type {
+    GuardrailResult,
+    GuardrailReport,
+    GuardrailOptions,
+} from './guardrails.js';
