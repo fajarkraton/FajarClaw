@@ -1,0 +1,18 @@
+[Unit]
+Description=FajarClaw Qwen3 Reranker Server
+After=network.target docker.service
+
+[Service]
+Type=simple
+User=primecore
+WorkingDirectory=/home/primecore/Documents/FajarClaw
+ExecStart=/home/primecore/Documents/FajarClaw/.venv/bin/python /home/primecore/Documents/FajarClaw/python/reranker_server.py
+Restart=on-failure
+RestartSec=10
+Environment=RERANKER_MODEL=Qwen/Qwen3-Reranker-0.6B
+Environment=RERANKER_HOST=0.0.0.0
+Environment=RERANKER_PORT=8101
+Environment=RERANKER_USE_GPU=true
+
+[Install]
+WantedBy=multi-user.target
