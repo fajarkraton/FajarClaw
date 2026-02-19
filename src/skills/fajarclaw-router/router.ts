@@ -297,3 +297,152 @@ export function formatRoutingDecision(routed: RoutedTask): string {
 
     return lines.join('\n');
 }
+
+// === Layer 2: Semantic Routing ===
+
+/** Result from semantic score lookup */
+export interface SemanticScore {
+    engine: Engine;
+    confidence: number;
+    source: string;
+}
+
+/**
+ * Routing rules dataset — embedded rules for semantic matching.
+ * In production these would be vectors in Milvus fc_routes collection.
+ * @ref FC-PRD-01 §6.2 Layer 2 (Semantic Search)
+ */
+const ROUTING_RULES: Array<{ pattern: string; engine: Engine; weight: number }> = [
+    // Claude Code patterns
+    { pattern: 'push code ke github repository', engine: 'claude-code', weight: 0.95 },
+    { pattern: 'buat REST API endpoint untuk data', engine: 'claude-code', weight: 0.92 },
+    { pattern: 'deploy ke staging server', engine: 'claude-code', weight: 0.98 },
+    { pattern: 'setup docker container', engine: 'claude-code', weight: 0.95 },
+    { pattern: 'refactor module dan optimasi performa', engine: 'claude-code', weight: 0.88 },
+    { pattern: 'write unit test untuk service', engine: 'claude-code', weight: 0.90 },
+    { pattern: 'create migration database schema', engine: 'claude-code', weight: 0.93 },
+    { pattern: 'setup CI/CD pipeline dengan GitHub Actions', engine: 'claude-code', weight: 0.95 },
+    { pattern: 'implement authentication dan authorization', engine: 'claude-code', weight: 0.85 },
+    { pattern: 'git commit dan push perubahan', engine: 'claude-code', weight: 0.97 },
+    { pattern: 'buat cloud function firebase', engine: 'claude-code', weight: 0.94 },
+    { pattern: 'configure environment variables', engine: 'claude-code', weight: 0.90 },
+    { pattern: 'fix bug di backend service', engine: 'claude-code', weight: 0.88 },
+    { pattern: 'install package dependency', engine: 'claude-code', weight: 0.92 },
+    { pattern: 'create firestore security rules', engine: 'claude-code', weight: 0.91 },
+
+    // Antigravity patterns
+    { pattern: 'buat form component untuk registrasi', engine: 'antigravity', weight: 0.92 },
+    { pattern: 'design dashboard layout responsive', engine: 'antigravity', weight: 0.95 },
+    { pattern: 'screenshot halaman dan compare', engine: 'antigravity', weight: 0.96 },
+    { pattern: 'buat halaman login dengan styling', engine: 'antigravity', weight: 0.90 },
+    { pattern: 'implement sidebar navigation', engine: 'antigravity', weight: 0.88 },
+    { pattern: 'buat modal dialog component', engine: 'antigravity', weight: 0.90 },
+    { pattern: 'design to code dari mockup figma', engine: 'antigravity', weight: 0.96 },
+    { pattern: 'run lighthouse audit', engine: 'antigravity', weight: 0.95 },
+    { pattern: 'create UI table dengan pagination', engine: 'antigravity', weight: 0.89 },
+    { pattern: 'buat responsive card grid layout', engine: 'antigravity', weight: 0.91 },
+    { pattern: 'parallel agent build multiple components', engine: 'antigravity', weight: 0.93 },
+    { pattern: 'visual regression testing', engine: 'antigravity', weight: 0.94 },
+    { pattern: 'dark mode theme implementation', engine: 'antigravity', weight: 0.88 },
+    { pattern: 'pixel perfect component matching', engine: 'antigravity', weight: 0.95 },
+
+    // Dual patterns
+    { pattern: 'buat full feature CRUD lengkap', engine: 'dual', weight: 0.93 },
+    { pattern: 'sprint planning dan backlog', engine: 'dual', weight: 0.95 },
+    { pattern: 'deploy dan verify semua halaman', engine: 'dual', weight: 0.92 },
+    { pattern: 'full stack feature login sampai dashboard', engine: 'dual', weight: 0.94 },
+    { pattern: 'security audit seluruh aplikasi', engine: 'dual', weight: 0.91 },
+    { pattern: 'e2e test end to end semua flow', engine: 'dual', weight: 0.90 },
+];
+
+/**
+ * Compute simple text similarity (word overlap / Jaccard).
+ * Used as lightweight substitute for embedding similarity.
+ */
+function textSimilarity(a: string, b: string): number {
+    const wordsA = new Set(a.toLowerCase().split(/\s+/).filter(w => w.length > 2));
+    const wordsB = new Set(b.toLowerCase().split(/\s+/).filter(w => w.length > 2));
+
+    if (wordsA.size === 0 || wordsB.size === 0) return 0;
+
+    let intersection = 0;
+    for (const w of wordsA) {
+        if (wordsB.has(w)) intersection++;
+    }
+
+    const union = new Set([...wordsA, ...wordsB]).size;
+    return union > 0 ? intersection / union : 0;
+}
+
+/**
+ * Score a message semantically against routing rules.
+ * @ref FC-PRD-01 §6.2 Layer 2 (Semantic Search)
+ *
+ * Returns top-3 matches with weighted scores.
+ */
+export function scoreSemanticRules(message: string): SemanticScore | null {
+    const scored = ROUTING_RULES.map(rule => ({
+        ...rule,
+        similarity: textSimilarity(message, rule.pattern) * rule.weight,
+    }));
+
+    scored.sort((a, b) => b.similarity - a.similarity);
+
+    const top = scored[0];
+    if (!top || top.similarity < 0.1) return null;
+
+    return {
+        engine: top.engine,
+        confidence: Math.min(top.similarity * 2, 1), // Scale up
+        source: top.pattern,
+    };
+}
+
+/**
+ * Route task with semantic layer (Layer 1 + Layer 2 fusion).
+ * @ref FC-PRD-01 §6.2 (Fusion: combine scores)
+ *
+ * High confidence (≥0.8): route directly
+ * Medium (0.5-0.8): use semantic result if available
+ * Low (<0.5): ask user for clarification
+ */
+export function routeTaskWithSemantic(message: string): RoutedTask {
+    const parsed = parseCommand(message);
+
+    // Override: bypass scoring
+    if (parsed.isOverride && parsed.command) {
+        return routeTask(message);
+    }
+
+    const task = parsed.task || message;
+
+    // Layer 1: Keyword scoring (~1ms)
+    const keywordResult = scoreKeywords(task);
+
+    // Layer 2: Semantic scoring (~1ms with local rules)
+    const semanticResult = scoreSemanticRules(task);
+
+    // Fusion: combine signals
+    if (keywordResult.confidenceLevel === 'high') {
+        // Strong keyword signal — trust it
+        return routeTask(message);
+    }
+
+    if (semanticResult && semanticResult.confidence > keywordResult.confidence) {
+        // Semantic is stronger — use it
+        const pattern = selectPattern(semanticResult.engine, task);
+        return {
+            originalMessage: message,
+            engine: semanticResult.engine,
+            confidence: (keywordResult.confidence + semanticResult.confidence) / 2,
+            confidenceLevel: getConfidenceLevel((keywordResult.confidence + semanticResult.confidence) / 2),
+            matchedKeywords: [...keywordResult.matchedKeywords, `semantic:${semanticResult.source.slice(0, 30)}`],
+            pattern,
+            timestamp: new Date(),
+        };
+    }
+
+    // Fall back to keyword result
+    return routeTask(message);
+}
+

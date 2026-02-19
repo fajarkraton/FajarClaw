@@ -253,3 +253,105 @@ export async function execute(options: ClaudeCodeOptions): Promise<ClaudeCodeRes
             };
     }
 }
+
+// === Streaming Execution ===
+
+/** Callback for streaming output chunks */
+export type StreamCallback = (chunk: string) => void;
+
+/** Result of streaming execution */
+export interface StreamingResult {
+    /** Full concatenated output */
+    output: string;
+    /** Execution mode */
+    mode: ExecutionMode;
+    /** Duration in ms */
+    duration: number;
+    /** Whether execution succeeded */
+    success: boolean;
+    /** Error if failed */
+    error?: string;
+    /** Number of chunks streamed */
+    chunks: number;
+}
+
+/**
+ * Execute with real-time streaming output via CLI spawn.
+ * @ref FC-PRD-01 §7.2 (Streaming Output)
+ *
+ * Pipes stdout in real-time to the onChunk callback,
+ * allowing UX to show progress as Claude generates.
+ */
+export async function executeWithStreaming(
+    options: ClaudeCodeOptions,
+    onChunk: StreamCallback
+): Promise<StreamingResult> {
+    const { spawn } = await import('node:child_process');
+    const startTime = Date.now();
+    const timeout = options.timeout ?? 120_000;
+
+    let fullPrompt = options.prompt;
+    if (options.context) {
+        fullPrompt = `CONTEXT:\n${options.context}\n\nTASK:\n${options.prompt}`;
+    }
+
+    const args = ['-p', fullPrompt, '--output-format', 'text'];
+    if (options.model) args.push('--model', options.model);
+    if (options.maxTokens) args.push('--max-tokens', options.maxTokens.toString());
+
+    return new Promise<StreamingResult>((resolve) => {
+        const child = spawn('claude', args, {
+            cwd: options.cwd,
+            env: { ...process.env },
+            stdio: ['ignore', 'pipe', 'pipe'],
+        });
+
+        let output = '';
+        let stderr = '';
+        let chunks = 0;
+
+        const timer = setTimeout(() => {
+            child.kill('SIGTERM');
+        }, timeout);
+
+        child.stdout?.on('data', (data: Buffer) => {
+            const text = data.toString();
+            output += text;
+            chunks++;
+            onChunk(text);
+        });
+
+        child.stderr?.on('data', (data: Buffer) => {
+            stderr += data.toString();
+        });
+
+        child.on('close', (code) => {
+            clearTimeout(timer);
+            const duration = Date.now() - startTime;
+
+            resolve({
+                output: output.trim(),
+                mode: 'cli',
+                duration,
+                success: code === 0,
+                error: code !== 0 ? stderr.trim() || `Exit code: ${code}` : undefined,
+                chunks,
+            });
+        });
+
+        child.on('error', (err) => {
+            clearTimeout(timer);
+            const duration = Date.now() - startTime;
+
+            resolve({
+                output: '',
+                mode: 'cli',
+                duration,
+                success: false,
+                error: `Spawn failed: ${err.message}`,
+                chunks: 0,
+            });
+        });
+    });
+}
+

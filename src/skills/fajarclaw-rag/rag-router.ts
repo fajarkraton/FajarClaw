@@ -14,6 +14,7 @@ import { indexFile, indexDirectory, formatIndexResults } from './indexer.js';
 import { isServerReady, formatEmbedStatus } from './embedder.js';
 import { formatCollectionStatus } from './milvus-client.js';
 import { runEval, runEvalComparison, formatEvalSummary, formatEvalComparison } from './evaluator.js';
+import { runDogfood, formatDogfoodReport, dogfoodSummaryLine } from './dogfood-report.js';
 
 // === Types ===
 
@@ -28,7 +29,7 @@ export interface RAGRoutedTask extends RoutedTask {
 
 export interface RAGCommandResult {
     /** Command type */
-    command: 'search' | 'index' | 'status' | 'eval' | 'eval-compare';
+    command: 'search' | 'index' | 'status' | 'eval' | 'eval-compare' | 'gate';
     /** Output text */
     output: string;
     /** Whether it succeeded */
@@ -71,6 +72,10 @@ export async function routeWithRAG(
 
     if (trimmed === '/eval-compare') {
         return handleEvalCompareCommand();
+    }
+
+    if (trimmed === '/gate' || trimmed.startsWith('/gate ')) {
+        return handleGateCommand(trimmed);
     }
 
     // Normal routing with context injection
@@ -252,6 +257,56 @@ async function handleEvalCompareCommand(): Promise<RAGCommandResult> {
         return {
             command: 'eval-compare',
             output: `❌ Eval compare failed: ${err instanceof Error ? err.message : String(err)}`,
+            success: false,
+            durationMs: Date.now() - start,
+        };
+    }
+}
+
+/**
+ * Handle /gate — quality gate check
+ * @ref FC-BP-01 §10.1 Step 4 (Quality Gate)
+ *
+ * Runs dogfood guardrails on FajarClaw + produces gate report.
+ */
+async function handleGateCommand(message: string): Promise<RAGCommandResult> {
+    const start = Date.now();
+    const args = message.replace('/gate', '').trim();
+    const targetDir = args || import.meta.dirname;
+
+    try {
+        const report = runDogfood(targetDir);
+        const dogfoodOutput = formatDogfoodReport(report);
+        const summaryLine = dogfoodSummaryLine(report);
+
+        // Gate decision
+        let gateStatus: string;
+        if (report.filesWithErrors === 0 && report.passRate >= 0.8) {
+            gateStatus = '✅ GATE: PASS';
+        } else if (report.filesWithErrors <= 2) {
+            gateStatus = '⚠️ GATE: CONDITIONAL — minor issues found';
+        } else {
+            gateStatus = '❌ GATE: BLOCKED — fix errors before proceeding';
+        }
+
+        const output = [
+            gateStatus,
+            '═'.repeat(50),
+            dogfoodOutput,
+            '',
+            summaryLine,
+        ].join('\n');
+
+        return {
+            command: 'gate',
+            output,
+            success: report.filesWithErrors === 0,
+            durationMs: Date.now() - start,
+        };
+    } catch (err) {
+        return {
+            command: 'gate',
+            output: `❌ Gate check failed: ${err instanceof Error ? err.message : String(err)}`,
             success: false,
             durationMs: Date.now() - start,
         };

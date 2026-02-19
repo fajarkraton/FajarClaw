@@ -334,3 +334,29 @@ export function formatEvalComparison(
 
     return lines.join('\n');
 }
+
+// === RAGAS-Compatible Export ===
+
+/** RAGAS dataset row format */
+export interface RAGASRow {
+    question: string;
+    ground_truth: string[];
+    answer: string;
+    contexts: string[];
+}
+
+/**
+ * Export evaluation results in RAGAS-compatible JSON format.
+ * @ref FC-BP-01 §8.3 (RAGAS Evaluation)
+ *
+ * Compatible with: ragas.evaluate(Dataset.from_dict(data))
+ */
+export function exportAsRAGAS(summary: EvalSummary): RAGASRow[] {
+    return summary.results.map(r => ({
+        question: r.query,
+        ground_truth: r.expectedSources,
+        answer: r.foundSources.join(' | '),
+        contexts: r.foundSources,
+    }));
+}
+
