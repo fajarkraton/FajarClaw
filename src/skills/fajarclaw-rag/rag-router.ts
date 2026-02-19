@@ -13,6 +13,7 @@ import { retrieve, buildContext, buildContextSummary, formatRetrievalResults } f
 import { indexFile, indexDirectory, formatIndexResults } from './indexer.js';
 import { isServerReady, formatEmbedStatus } from './embedder.js';
 import { formatCollectionStatus } from './milvus-client.js';
+import { runEval, runEvalComparison, formatEvalSummary, formatEvalComparison } from './evaluator.js';
 
 // === Types ===
 
@@ -27,7 +28,7 @@ export interface RAGRoutedTask extends RoutedTask {
 
 export interface RAGCommandResult {
     /** Command type */
-    command: 'search' | 'index' | 'status';
+    command: 'search' | 'index' | 'status' | 'eval' | 'eval-compare';
     /** Output text */
     output: string;
     /** Whether it succeeded */
@@ -62,6 +63,14 @@ export async function routeWithRAG(
 
     if (trimmed === '/rag-status') {
         return handleStatusCommand();
+    }
+
+    if (trimmed === '/eval' || trimmed.startsWith('/eval ')) {
+        return handleEvalCommand(trimmed);
+    }
+
+    if (trimmed === '/eval-compare') {
+        return handleEvalCompareCommand();
     }
 
     // Normal routing with context injection
@@ -200,6 +209,53 @@ async function handleStatusCommand(): Promise<RAGCommandResult> {
         success: true,
         durationMs: Date.now() - start,
     };
+}
+
+/**
+ * Handle /eval command — run evaluation suite
+ */
+async function handleEvalCommand(trimmed: string): Promise<RAGCommandResult> {
+    const start = Date.now();
+    try {
+        const mode = trimmed.includes('basic') ? 'basic' as const : 'hybrid' as const;
+        const summary = await runEval(mode);
+        return {
+            command: 'eval',
+            output: formatEvalSummary(summary),
+            success: true,
+            durationMs: Date.now() - start,
+        };
+    } catch (err) {
+        return {
+            command: 'eval',
+            output: `❌ Eval failed: ${err instanceof Error ? err.message : String(err)}`,
+            success: false,
+            durationMs: Date.now() - start,
+        };
+    }
+}
+
+/**
+ * Handle /eval-compare — run A/B comparison
+ */
+async function handleEvalCompareCommand(): Promise<RAGCommandResult> {
+    const start = Date.now();
+    try {
+        const { basic, hybrid, delta } = await runEvalComparison();
+        return {
+            command: 'eval-compare',
+            output: formatEvalComparison(basic, hybrid, delta),
+            success: true,
+            durationMs: Date.now() - start,
+        };
+    } catch (err) {
+        return {
+            command: 'eval-compare',
+            output: `❌ Eval compare failed: ${err instanceof Error ? err.message : String(err)}`,
+            success: false,
+            durationMs: Date.now() - start,
+        };
+    }
 }
 
 /**
